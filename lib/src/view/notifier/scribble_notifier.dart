@@ -337,9 +337,19 @@ class ScribbleNotifier extends ScribbleNotifierBase
         pointerPosition: _getPointFromEvent(event),
       );
     } else if (value is Erasing) {
-      temporaryValue = _erasePoint(event).copyWith(
-        pointerPosition: _getPointFromEvent(event),
-      );
+      final erasedState = _erasePoint(event);
+      // Check if content was actually erased
+      if (erasedState != value) {
+        // Content was actually erased, add to undo stack
+        value = erasedState.copyWith(
+          pointerPosition: _getPointFromEvent(event),
+        );
+      } else {
+        // No content was erased, only update pointer position without affecting undo stack
+        temporaryValue = value.copyWith(
+          pointerPosition: _getPointFromEvent(event),
+        );
+      }
     }
   }
 
@@ -356,11 +366,24 @@ class ScribbleNotifier extends ScribbleNotifierBase
             value.activePointerIds.where((id) => id != event.pointer).toList(),
       );
     } else if (value is Erasing) {
-      value = _erasePoint(event).copyWith(
-        pointerPosition: pos,
-        activePointerIds:
-            value.activePointerIds.where((id) => id != event.pointer).toList(),
-      );
+      final erasedState = _erasePoint(event);
+      // Only update value if content was actually erased (affects undo stack)
+      if (erasedState != value) {
+        value = erasedState.copyWith(
+          pointerPosition: pos,
+          activePointerIds: value.activePointerIds
+              .where((id) => id != event.pointer)
+              .toList(),
+        );
+      } else {
+        // No content was erased, only update pointer position without affecting undo stack
+        temporaryValue = value.copyWith(
+          pointerPosition: pos,
+          activePointerIds: value.activePointerIds
+              .where((id) => id != event.pointer)
+              .toList(),
+        );
+      }
     }
   }
 
@@ -375,11 +398,24 @@ class ScribbleNotifier extends ScribbleNotifierBase
             value.activePointerIds.where((id) => id != event.pointer).toList(),
       );
     } else if (value is Erasing) {
-      value = _erasePoint(event).copyWith(
-        pointerPosition: null,
-        activePointerIds:
-            value.activePointerIds.where((id) => id != event.pointer).toList(),
-      );
+      final erasedState = _erasePoint(event);
+      // Only update value if content was actually erased (affects undo stack)
+      if (erasedState != value) {
+        value = erasedState.copyWith(
+          pointerPosition: null,
+          activePointerIds: value.activePointerIds
+              .where((id) => id != event.pointer)
+              .toList(),
+        );
+      } else {
+        // No content was erased
+        temporaryValue = value.copyWith(
+          pointerPosition: null,
+          activePointerIds: value.activePointerIds
+              .where((id) => id != event.pointer)
+              .toList(),
+        );
+      }
     }
   }
 
@@ -412,16 +448,25 @@ class ScribbleNotifier extends ScribbleNotifierBase
   }
 
   ScribbleState _erasePoint(PointerEvent event) {
-    return value.copyWith.sketch(
-      lines: value.sketch.lines
-          .where(
-            (l) => l.points.every(
-              (p) =>
-                  (event.localPosition - p.asOffset).distance >
-                  l.width + value.selectedWidth,
-            ),
-          )
-          .toList(),
+    final filteredLines = value.sketch.lines
+        .where(
+          (l) => l.points.every(
+            (p) =>
+                (event.localPosition - p.asOffset).distance >
+                l.width + value.selectedWidth,
+          ),
+        )
+        .toList();
+
+    // If no lines were erased
+    if (filteredLines.length == value.sketch.lines.length) {
+      return value;
+    }
+
+    return value.copyWith(
+      sketch: value.sketch.copyWith(
+        lines: filteredLines,
+      ),
     );
   }
 
