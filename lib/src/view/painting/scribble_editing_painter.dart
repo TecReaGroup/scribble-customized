@@ -57,11 +57,11 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
       paint
         ..style = state.map(
           drawing: (_) => PaintingStyle.fill,
-          erasing: (_) => PaintingStyle.stroke,
+          erasing: (_) => PaintingStyle.fill,
         )
         ..color = state.map(
           drawing: (s) => Color(s.selectedColor),
-          erasing: (s) => const Color(0xFF000000),
+          erasing: (s) => const Color.fromARGB(255, 195, 193, 193),
         )
         ..strokeWidth = 1;
       canvas.drawCircle(
